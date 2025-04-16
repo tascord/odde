@@ -1,0 +1,32 @@
+#cloud-config
+users:
+  - default
+ssh_pwauth: false
+ssh_quiet_keygen: false
+ssh_deletekeys: true
+ssh_genkeytypes: [ed25519]
+ntp:
+  enabled: true
+  ntp_client: chrony
+  servers:
+    - time.cloudflare.com
+packages:
+  - apt:
+      - fish
+      - libssl-dev
+      - rustup
+      - libpcsclite-dev
+      - lld
+      - binaryen
+      - gcc
+      - cmake
+      - zip
+      - unzip
+      - yubikey-manager
+      - sqlite3
+      - libsqlite3-dev
+      - code
+      - pkg-config
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true

@@ -1,0 +1,16 @@
+[package]
+name = "utask"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+ipsea = "0.1.0"
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.44.2", features = ["full", "sync"] }
+toml = "0.8.20"
+hyper = { version = "1", features = ["full"] }
+http-body-util = "0.1"
+hyper-util = { version = "0.1", features = ["full"] }
+serde_json = "1.0.140"
+futures = "0.3.31"
