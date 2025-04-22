@@ -9,14 +9,14 @@
     <memory unit='GiB'>{memory_gib}</memory>
     <currentMemory unit='GiB'>{memory_gib}</currentMemory>
     <vcpu placement='static'>{vcpus}</vcpu>
-    <os firmware='efi'>
+    <os>
       <type arch='x86_64' machine='q35'>hvm</type>
-      <firmware>
-        <feature enabled='yes' name='enrolled-keys'/>
-        <feature enabled='yes' name='secure-boot'/>
-      </firmware>
-      <loader readonly='yes' secure='yes' type='pflash'>{ovmf_code}</loader>
-      <nvram template='{ovmf_vars}'>{nvram_path}</nvram>
+      <!-- <firmware> -->
+        <!-- <feature enabled='yes' name='enrolled-keys'/> -->
+        <!-- <feature enabled='yes' name='secure-boot'/> -->
+      <!-- </firmware> -->
+      <!-- <loader readonly='yes' secure='yes' type='pflash'>{ovmf_code}</loader> -->
+      <!-- <nvram template='{ovmf_vars}'>{nvram_path}</nvram> -->
       <boot dev='hd'/>
     </os>
     <features>
