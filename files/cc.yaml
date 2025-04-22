@@ -1,41 +1,50 @@
 #cloud-config
 users:
   - name: odde
-    gecos: odde
     groups: sudo,adm,dialout,cdrom,floppy,tape,audio,dip,video,plugdev,users
+    sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /usr/bin/fish
+    hashed_passwd: "$6$rounds=500000$Mc9/uQcOl9N.ryEg$mX.SW03Q/u/g7k53pn40qbCI789EfyfaCAuyfhxVRW1yrlp4frKCVYC7JiYodwYmdyVUWHHb7FtWmDPSppUY0."
     lock_passwd: false
+    no_create_home: false
     ssh_authorized_keys:
       - {ssh_key}
-ssh_pwauth: false
+
+ssh_pwauth: true
 ssh_quiet_keygen: false
 ssh_deletekeys: true
 ssh_genkeytypes: [ed25519]
+
 ntp:
   enabled: true
   ntp_client: chrony
   servers:
     - time.cloudflare.com
+
 packages:
-  - apt:
-      - fish
-      - libssl-dev
-      - rustup
-      - libpcsclite-dev
-      - lld
-      - binaryen
-      - gcc
-      - cmake
-      - zip
-      - unzip
-      - sqlite3
-      - libsqlite3-dev
-      - pkg-config
+  - fish
+  - libssl-dev
+  - rustup
+  - libpcsclite-dev
+  - lld
+  - binaryen
+  - gcc
+  - cmake
+  - zip
+  - unzip
+  - sqlite3
+  - libsqlite3-dev
+  - pkg-config
+
 package_update: true
 package_upgrade: true
 package_reboot_if_required: true
+
 bootcmd:
   - mkdir -p /opt/odde
+  - chmod 644 /etc/systemd/system/odde.service
+  - chown odde:odde /opt/odde/config.toml
+
 write_files:
   - path: /etc/systemd/system/odde.service
     content: |
@@ -45,12 +54,15 @@ write_files:
 
       [Service]
       Type=simple
+      User=odde
+      WorkingDirectory=/opt/odde
       ExecStart=/opt/odde/odde
       Restart=on-failure
       RestartSec=5
 
       [Install]
       WantedBy=multi-user.target
+
   - path: /opt/odde/config.toml
     content: |
       [flora]
@@ -59,63 +71,11 @@ write_files:
           "sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIMrTPjuR7ibYPv/BioHijYBYV8C3Oa3ACMptIXKLV8XyAAAAC3NzaDpwcmltYXJ5",
           "ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBFVWgqDZvHz1nOQ9zsBf3KbYFO90Y7ZkyEAidJmzCjYQtJb/ZpFsVXNgTWcgQYD/diQ8vT5VbQDUXdIGtpmikSTUGYEzlwXGKgYOZsGBT3FdvjBWbi4fA88yTdIaewy1NA==",
       ]
-  - path: /etc/pam.d/sshd
-    content: |
-      # PAM configuration for the Secure Shell service
 
-      # Standard Un*x authentication.
-      @include common-auth
-
-      # Disallow non-root logins when /etc/nologin exists.
-      account    required     pam_nologin.so
-
-      # Standard Un*x authorization.
-      @include common-account
-
-      # SELinux needs to be the first session rule.  This ensures that any
-      # lingering context has been cleared.  Without this it is possible that a
-      # module could execute code in the wrong domain.
-      session [success=ok ignore=ignore module_unknown=ignore default=bad]        pam_selinux.so close
-
-      # Set the loginuid process attribute.
-      session    required     pam_loginuid.so
-
-      # Create a new session keyring.
-      session    optional     pam_keyinit.so force revoke
-
-      # Standard Un*x session setup and teardown.
-      @include common-session
-
-      # Ensure the users home exists
-      session     optional    pam_exec /opt/odde/odde-pam
-
-      # Print the message of the day upon successful login.
-      # This includes a dynamically generated part from /run/motd.dynamic
-      # and a static (admin-editable) part from /etc/motd.
-      session    optional     pam_motd.so  motd=/run/motd.dynamic
-      session    optional     pam_motd.so noupdate
-
-      # Print the status of the user's mailbox upon successful login.
-      session    optional     pam_mail.so standard noenv # [1]
-
-      # Set up user limits from /etc/security/limits.conf.
-      session    required     pam_limits.so
-
-      # Read environment variables from /etc/environment and
-      # /etc/security/pam_env.conf.
-      session    required     pam_env.so # [1]
-      # In Debian 4.0 (etch), locale-related environment variables were moved to
-      # /etc/default/locale, so read that as well.
-      session    required     pam_env.so user_readenv=1 envfile=/etc/default/locale
-
-      # SELinux needs to intervene at login time to ensure that the process starts
-      # in the proper default security context.  Only sessions which are intended
-      # to run in the user's context should be run after this.
-      session [success=ok ignore=ignore module_unknown=ignore default=bad]        pam_selinux.so open
-
-      # Standard Un*x password updating.
-      @include common-password
-run_cmd:
-  - [systemctl, enable, odde]
-  - [systemctl, start, odde]
-  - [systemctl, status, odde]
+runcmd:
+  - systemctl daemon-reexec
+  - systemctl daemon-reload
+  - systemctl enable odde
+  - systemctl start odde
+  - systemctl status odde
+  - curl https://sh.rustup.rs -sSf | sh -s -- -y

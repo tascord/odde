@@ -1,5 +1,5 @@
-<domain type='kvm' id='2'>
-    <name>oode</name>
+<domain type='qemu' id='2'>
+    <name>odde</name>
     <uuid>{uuid}</uuid>
     <metadata>
       <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -24,7 +24,6 @@
       <apic/>
       <smm state='on'/>
     </features>
-    <cpu mode='host-passthrough' check='none' migratable='off'/>
     <clock offset='utc'>
       <timer name='rtc' tickpolicy='catchup'/>
       <timer name='pit' tickpolicy='delay'/>
@@ -66,10 +65,10 @@
         <target type='serial' port='0'/>
         <alias name='serial0'/>
       </console>
-      <tpm model='tpm-crb'>
+      <!-- <tpm model='tpm-crb'>
         <backend type='emulator' version='2.0'/>
         <alias name='tpm0'/>
-      </tpm>
+      </tpm> -->
       <audio id='1' type='none'/>
       <memballoon model='virtio'>
         <alias name='balloon0'/>
