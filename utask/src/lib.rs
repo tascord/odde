@@ -10,6 +10,7 @@ use hyper::{server::conn::http1, service::service_fn};
 use hyper_util::rt::TokioIo;
 use ipsea::log::warn;
 use tokio::{net::TcpListener, process::Command, sync::mpsc::channel};
+use ty::User;
 
 pub mod fs;
 pub mod net;
@@ -109,15 +110,15 @@ pub async fn git_mgr() {
     });
 }
 
-pub async fn setup_user(user: String) -> anyhow::Result<()> {
+pub async fn setup_user(user: User) -> anyhow::Result<()> {
     fs::create(user.clone())?;
     Command::new("useradd")
         .args([
-            &Path::new("/home/").join(&user).display().to_string(),
+            &Path::new("/home/").join(&user.name).display().to_string(),
             "-m",
             "-s",
             "fish",
-            &user,
+            &user.name,
         ])
         .status()
         .await?;

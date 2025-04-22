@@ -19,7 +19,7 @@ async fn main() {
     let proms = config
         .users
         .iter()
-        .map(|u| async { setup_user(u.name.to_string()).await });
+        .map(|u| async { setup_user(u.clone()).await });
 
     let _ = try_join_all(proms).await;
 
@@ -32,7 +32,7 @@ async fn main() {
                 .find(|v| v.keys.iter().any(|k| a.key.contains(k)));
 
             if let Some(user) = user {
-                let _ = utask::fs::create(user.name.to_string());
+                let _ = utask::fs::create(user.clone());
             } else {
                 warn!("User with no configured key logging in...");
             }
