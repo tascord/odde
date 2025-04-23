@@ -132,7 +132,7 @@ async fn main() -> Result<()> {
     let mut line = String::new();
     let mut stdout = BufReader::new(qemu.unwrap().stdout.take().unwrap());
     while let Ok(_) = stdout.read_line(&mut line) {
-        info!("[ODDE:SERIAL] {line}");
+        println!("{line}");
         if line.contains("Permit User Sessions") && line.contains("OK") {
             info!("Building odde-service");
             match Command::new("rust").args(["build", "-p", "odde-service", "--release"]).status().map(|v| v.success()) {
