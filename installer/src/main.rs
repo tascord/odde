@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
                     "-avzP",
                     "-e",
                     "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
-                    "odde@localhost:/home/odde/",
+                    "odde@localhost:/home/odde/odde",
                     "./target/release/odde",
                 ])
                 .status()
