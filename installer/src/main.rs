@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
 
             info!("Restarting odde service");
             match Command::new("ssh")
-                .args(["odde@localhost", "-p", "2222", "-o StrictHostKeyChecking=no", "-t", &format!("systemctl restart odde; bash -l")])
+                .args(["odde@localhost", "-p", "2222", "-o StrictHostKeyChecking=no", "-t", &format!("sudo systemctl restart odde; bash -l")])
                 .status()
                 .map(|v| v.success())
             {
