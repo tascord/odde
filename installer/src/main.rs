@@ -134,6 +134,11 @@ async fn main() -> Result<()> {
     while let Ok(_) = stdout.read_line(&mut line) {
         println!("{line}");
         if line.contains("Permit User Sessions") && line.contains("OK") {
+            let _ = Command::new("ssh-keygen")
+                .args(["-f", "~/.ssh/known_hosts", "-R", "[localhost]:2222"])
+                .spawn()
+                .map(|mut s| s.wait());
+
             info!("Building odde-service");
             match Command::new("rust").args(["build", "-p", "odde-service", "--release"]).status().map(|v| v.success()) {
                 Ok(false) => warn!("Non-zero status code"),
@@ -143,7 +148,13 @@ async fn main() -> Result<()> {
 
             info!("Copying odde binary");
             match Command::new("rsync")
-                .args(["-avzP", "-e", "ssh -p 2222 -o StrictHostKeyChecking=no", "odde@localhost:/home/odde/", "./target/release/odde"])
+                .args([
+                    "-avzP",
+                    "-e",
+                    "ssh -p 2222 -o StrictHostKeyChecking=no",
+                    "odde@localhost:/home/odde/",
+                    "./target/release/odde",
+                ])
                 .status()
                 .map(|v| v.success())
             {
@@ -154,7 +165,14 @@ async fn main() -> Result<()> {
 
             info!("Restarting odde service");
             match Command::new("ssh")
-                .args(["odde@localhost", "-p", "2222", "-o StrictHostKeyChecking=no", "-t", &format!("sudo systemctl restart odde; bash -l")])
+                .args([
+                    "odde@localhost",
+                    "-p",
+                    "2222",
+                    "-o StrictHostKeyChecking=no",
+                    "-t",
+                    &format!("sudo systemctl restart odde"),
+                ])
                 .status()
                 .map(|v| v.success())
             {
