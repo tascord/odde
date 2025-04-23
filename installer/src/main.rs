@@ -151,11 +151,11 @@ async fn main() -> Result<()> {
             info!("Copying odde binary");
             match Command::new("rsync")
                 .args([
-                    "-avzP",
+                    "-azhP",
                     "-e",
                     "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
-                    "odde@localhost:/home/odde/odde",
                     "./target/release/odde",
+                    "odde@localhost:/home/odde/",
                 ])
                 .status()
                 .map(|v| v.success())
