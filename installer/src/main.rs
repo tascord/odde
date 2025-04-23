@@ -153,7 +153,7 @@ async fn main() -> Result<()> {
                 .args([
                     "-avzP",
                     "-e",
-                    "ssh -p 2222 -o StrictHostKeyChecking=no",
+                    "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
                     "odde@localhost:/home/odde/",
                     "./target/release/odde",
                 ])
@@ -171,9 +171,9 @@ async fn main() -> Result<()> {
                     "odde@localhost",
                     "-p",
                     "2222",
-                    "-o StrictHostKeyChecking=no",
+                    "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
                     "-t",
-                    &format!("sudo systemctl restart odde"),
+                    &format!("sudo systemctl enable odde; sudo systemctl start odde"),
                 ])
                 .status()
                 .map(|v| v.success())
