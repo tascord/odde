@@ -143,7 +143,7 @@ async fn main() -> Result<()> {
 
             info!("Copying odde binary");
             match Command::new("rsync")
-                .args(["-avzP", "-e", "ssh -p 2222", "odde@localhost:/home/odde/", "./target/release/odde"])
+                .args(["-avzP", "-e", "ssh -p 2222 -o StrictHostKeyChecking=no", "odde@localhost:/home/odde/", "./target/release/odde"])
                 .status()
                 .map(|v| v.success())
             {
@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
 
             info!("Restarting odde service");
             match Command::new("ssh")
-                .args(["odde@localhost", "-p", "2222", "-t", &format!("systemctl restart odde; bash -l")])
+                .args(["odde@localhost", "-p", "2222", "-o StrictHostKeyChecking=no", "-t", &format!("systemctl restart odde; bash -l")])
                 .status()
                 .map(|v| v.success())
             {
