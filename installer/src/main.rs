@@ -142,7 +142,7 @@ async fn main() -> Result<()> {
                 .map(|mut s| s.wait());
 
             info!("Building odde-service");
-            match Command::new("rust").args(["build", "-p", "odde-service", "--release"]).status().map(|v| v.success()) {
+            match Command::new("cargo").args(["build", "-p", "odde-service", "--release"]).status().map(|v| v.success()) {
                 Ok(false) => warn!("Non-zero status code"),
                 Err(e) => warn!("Failed to run: {e:?}"),
                 _ => {}
