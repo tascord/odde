@@ -132,10 +132,12 @@ async fn main() -> Result<()> {
     let mut line = String::new();
     let mut stdout = BufReader::new(qemu.unwrap().stdout.take().unwrap());
     while let Ok(_) = stdout.read_line(&mut line) {
-        println!("{line}");
         if line.contains("Permit User Sessions") && line.contains("OK") {
             let _ = Command::new("ssh-keygen")
                 .args(["-f", "~/.ssh/known_hosts", "-R", "[localhost]:2222"])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null())
                 .spawn()
                 .map(|mut s| s.wait());
 
