@@ -2,15 +2,15 @@ use std::sync::Arc;
 
 use futures::future::try_join_all;
 use ipsea::log::warn;
-use utask::{
+use odde::{
     home, setup_user,
     ty::{Config, UTaskRequest},
 };
 
 #[tokio::main]
 async fn main() {
-    tokio::spawn(utask::git_mgr()); // Keep an up-to-date git instance locally
-    tokio::spawn(utask::home_mgr()); // Nuke all accounts that havent been logged in for 90m
+    tokio::spawn(odde::git_mgr()); // Keep an up-to-date git instance locally
+    tokio::spawn(odde::home_mgr()); // Nuke all accounts that havent been logged in for 90m
 
     let config: Arc<Config> = Arc::new(
         toml::from_str(&std::fs::read_to_string(home().join("config.toml")).unwrap()).unwrap(),
@@ -23,7 +23,7 @@ async fn main() {
 
     let _ = try_join_all(proms).await;
 
-    let _ = ipsea::start_server("utask".to_string(), {
+    let _ = ipsea::start_server("odde".to_string(), {
         let config = config.clone();
         move |a: UTaskRequest, b| {
             let user = config
@@ -32,7 +32,7 @@ async fn main() {
                 .find(|v| v.keys.iter().any(|k| a.key.contains(k)));
 
             if let Some(user) = user {
-                let _ = utask::fs::create(user.clone());
+                let _ = odde::fs::create(user.clone());
             } else {
                 warn!("User with no configured key logging in...");
             }

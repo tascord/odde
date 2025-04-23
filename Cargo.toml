@@ -1,6 +1,4 @@
 [workspace]
 resolver = "2"
 
-members = [ "installer",
-    "utask", "utask-pam",
-]
+members = ["installer", "odde-service", "odde-pam"]

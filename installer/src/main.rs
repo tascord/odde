@@ -1,8 +1,9 @@
 use {
-    anyhow::{anyhow, bail, Result},
-    log::{info, warn, LevelFilter},
+    anyhow::{Result, anyhow, bail},
+    log::{LevelFilter, info, warn},
     std::{
         env,
+        io::{BufRead, BufReader},
         path::{Path, PathBuf},
         process::{self, Command, Stdio},
     },
@@ -99,7 +100,6 @@ async fn main() -> Result<()> {
     }
 
     // Start QEMU
-    let io = || if env::args().any(|a| a.contains("--dbg")) { Stdio::inherit() } else { Stdio::null() };
     let qemu = Command::new("qemu-system-x86_64")
         .args([
             "-machine",
@@ -119,18 +119,52 @@ async fn main() -> Result<()> {
             "-device",
             "virtio-net-pci,netdev=net0",
         ])
-        .stdin(io())
-        .stdout(io())
-        .stderr(io())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn();
 
-    match qemu {
-        Ok(_) => {
-            info!("QEMU started successfully. SSH will be available on port 2222.");
-        }
-        Err(e) => {
-            warn!("Failed to start QEMU: {e}");
-            process::exit(1);
+    if let Err(e) = qemu {
+        warn!("Failed to start QEMU: {e}");
+        process::exit(1);
+    }
+
+    let mut line = String::new();
+    let mut stdout = BufReader::new(qemu.unwrap().stdout.take().unwrap());
+    while let Ok(_) = stdout.read_line(&mut line) {
+        info!("[ODDE:SERIAL] {line}");
+        if line.contains("Permit User Sessions") && line.contains("OK") {
+            info!("Building odde-service");
+            match Command::new("rust").args(["build", "-p", "odde-service", "--release"]).status().map(|v| v.success()) {
+                Ok(false) => warn!("Non-zero status code"),
+                Err(e) => warn!("Failed to run: {e:?}"),
+                _ => {}
+            }
+
+            info!("Copying odde binary");
+            match Command::new("rsync")
+                .args(["-avzP", "-e", "ssh -p 2222", "odde@localhost:/home/odde/", "./target/release/odde"])
+                .status()
+                .map(|v| v.success())
+            {
+                Ok(false) => warn!("Non-zero status code"),
+                Err(e) => warn!("Failed to run: {e:?}"),
+                _ => {}
+            }
+
+            info!("Restarting odde service");
+            match Command::new("ssh")
+                .args(["odde@localhost", "-p", "2222", "-t", &format!("systemctl restart odde; bash -l")])
+                .status()
+                .map(|v| v.success())
+            {
+                Ok(false) => warn!("Non-zero status code"),
+                Err(e) => warn!("Failed to run: {e:?}"),
+                _ => {}
+            }
+
+            info!("Done!");
+            process::exit(0);
         }
     }
 

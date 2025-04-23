@@ -1193,6 +1193,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "odde"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "ipsea",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml",
+]
+
+[[package]]
+name = "odde-pam"
+version = "0.1.0"
+dependencies = [
+ "ipsea",
+ "odde",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2043,30 +2067,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
-]
-
-[[package]]
-name = "utask"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "http-body-util",
- "hyper",
- "hyper-util",
- "ipsea",
- "serde",
- "serde_json",
- "tokio",
- "toml",
-]
-
-[[package]]
-name = "utask-pam"
-version = "0.1.0"
-dependencies = [
- "ipsea",
- "utask",
 ]
 
 [[package]]

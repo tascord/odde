@@ -17,7 +17,7 @@ pub mod net;
 pub mod ty;
 
 pub fn home() -> PathBuf {
-    Path::new("/home/utask").to_path_buf()
+    Path::new("/home/odde").to_path_buf()
 }
 
 pub async fn home_mgr() {
