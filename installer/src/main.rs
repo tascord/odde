@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
     }
 
     // Resize image
-    if let Err(e) = Command::new("qemu-img").args(["resize", &img_path.display().to_string(), "10G"]).status() {
+    if let Err(e) = Command::new("qemu-img").args(["resize", &img_path.display().to_string(), "30G"]).status() {
         warn!("Failed to resize image: {e}");
         process::exit(1);
     }
@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
             "accel=kvm:tcg",
             // "-cpu", "host",
             "-m",
-            "4G",
+            "8G",
             "-smp",
             "2",
             "-nographic",
