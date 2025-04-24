@@ -148,6 +148,24 @@ async fn main() -> Result<()> {
                 _ => {}
             }
 
+            info!("Setting homdir permissions");
+            match Command::new("ssh")
+                .args([
+                    "odde@localhost",
+                    "-p",
+                    "2222",
+                    "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
+                    "-t",
+                    &format!("sudo chown -R odde:odde /home/odde"),
+                ])
+                .status()
+                .map(|v| v.success())
+            {
+                Ok(false) => warn!("Non-zero status code"),
+                Err(e) => warn!("Failed to run: {e:?}"),
+                _ => {}
+            }
+
             info!("Copying odde binary");
             match Command::new("rsync")
                 .args([

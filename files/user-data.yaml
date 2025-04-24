@@ -12,9 +12,6 @@ users:
 
 ssh_pwauth: true
 
-runcmd:
-  - chown -R odde:odde /home/odde
-
 ntp:
   enabled: true
   ntp_client: chrony
