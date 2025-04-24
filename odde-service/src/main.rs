@@ -7,6 +7,12 @@ use odde::{
     ty::{Config, UTaskRequest},
 };
 
+fn logger() {
+    let mut builder = pretty_env_logger::formatted_builder();
+    builder.filter_level(if env::var("RUST_LOG").is_ok() { LevelFilter::Debug } else { LevelFilter::Info });
+    builder.init();
+}
+
 #[tokio::main]
 async fn main() {
     tokio::spawn(odde::git_mgr()); // Keep an up-to-date git instance locally

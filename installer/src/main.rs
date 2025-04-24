@@ -156,7 +156,7 @@ async fn main() -> Result<()> {
                     "2222",
                     "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
                     "-t",
-                    &format!("sudo chown -R odde:odde /home/odde"),
+                    &format!("sudo chown -R odde:odde /home/odde/"),
                 ])
                 .status()
                 .map(|v| v.success())
@@ -191,7 +191,7 @@ async fn main() -> Result<()> {
                     "2222",
                     "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
                     "-t",
-                    &format!("sudo systemctl enable odde; sudo systemctl start odde"),
+                    "\"sudo systemctl enable odde; sudo systemctl start odde\""
                 ])
                 .status()
                 .map(|v| v.success())
