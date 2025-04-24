@@ -1,38 +1,33 @@
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    time::{Duration, Instant},
+use {
+    fs::*,
+    futures::executor::block_on,
+    hyper::{server::conn::http1, service::service_fn},
+    hyper_util::rt::TokioIo,
+    log::warn,
+    std::{
+        collections::HashMap,
+        net::SocketAddr,
+        path::{Path, PathBuf},
+        time::{Duration, Instant},
+    },
+    tokio::{net::TcpListener, process::Command, sync::mpsc::channel},
+    ty::User,
 };
-
-use fs::*;
-use hyper::{server::conn::http1, service::service_fn};
-use hyper_util::rt::TokioIo;
-use ipsea::log::warn;
-use tokio::{net::TcpListener, process::Command, sync::mpsc::channel};
-use ty::User;
 
 pub mod fs;
 pub mod net;
 pub mod ty;
 
-pub fn home() -> PathBuf {
-    Path::new("/home/odde").to_path_buf()
-}
+pub fn home() -> PathBuf { Path::new("/home/odde").to_path_buf() }
 
 pub async fn home_mgr() {
     let mut users = HashMap::<String, Instant>::new();
     loop {
-        let currently_logged_in = get_logged_in_users()
-            .await
-            .inspect_err(|e| warn!("Failed to get logged in users: {}", e))
-            .unwrap_or_default();
+        let currently_logged_in =
+            get_logged_in_users().await.inspect_err(|e| warn!("Failed to get logged in users: {}", e)).unwrap_or_default();
 
         let existing_users = users.clone();
-        for u in currently_logged_in
-            .iter()
-            .filter(|u| !existing_users.contains_key(*u))
-        {
+        for u in currently_logged_in.iter().filter(|u| !existing_users.contains_key(*u)) {
             users.insert(u.to_string(), Instant::now());
         }
 
@@ -43,7 +38,7 @@ pub async fn home_mgr() {
             }
 
             if now.duration_since(*t) > TIMEOUT {
-                match destroy(u.to_string()) {
+                match block_on(destroy(u.to_string())) {
                     Ok(_) => false,
                     Err(e) => {
                         warn!("Failed to remove user {u}: {e:?}");
@@ -69,9 +64,8 @@ pub async fn git_mgr() {
             let io = TokioIo::new(stream);
             let tx = tx.clone();
             tokio::task::spawn(async move {
-                if let Err(err) = http1::Builder::new()
-                    .serve_connection(io, service_fn(|r| net::git_wh(r, tx.clone())))
-                    .await
+                if let Err(err) =
+                    http1::Builder::new().serve_connection(io, service_fn(|r| net::git_wh(r, tx.clone()))).await
                 {
                     eprintln!("Error serving connection: {:?}", err);
                 }
@@ -81,22 +75,18 @@ pub async fn git_mgr() {
 
     tokio::spawn(async move {
         let mut last_pull = Instant::now();
-        while let Some(_) = rx.recv().await {
+        while (rx.recv().await).is_some() {
             if Instant::now().duration_since(last_pull) < Duration::from_secs(100) {
                 last_pull = Instant::now();
                 let temp = Path::new("/tmp/rm-applications");
-                let hard = home().join("/rm-applications");
+                let hard = home().join("rm-applications");
 
                 if temp.exists() {
                     std::fs::remove_dir_all(temp).unwrap();
                 }
 
                 if Command::new("git")
-                    .args([
-                        "clone",
-                        "git@github.com:RMHEDGE/rm-applications.git",
-                        &temp.display().to_string(),
-                    ])
+                    .args(["clone", "git@github.com:tascord/ptvrs.git", &temp.display().to_string()])
                     .status()
                     .await
                     .unwrap()
@@ -111,15 +101,9 @@ pub async fn git_mgr() {
 }
 
 pub async fn setup_user(user: User) -> anyhow::Result<()> {
-    fs::create(user.clone())?;
+    fs::create(user.clone()).await?;
     Command::new("useradd")
-        .args([
-            &Path::new("/home/").join(&user.name).display().to_string(),
-            "-m",
-            "-s",
-            "fish",
-            &user.name,
-        ])
+        .args([&Path::new("/home/").join(&user.name).display().to_string(), "-m", "-s", "fish", &user.name])
         .status()
         .await?;
     Ok(())

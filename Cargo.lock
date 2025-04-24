@@ -1202,6 +1202,8 @@ dependencies = [
  "hyper",
  "hyper-util",
  "ipsea",
+ "log",
+ "pretty_env_logger",
  "serde",
  "serde_json",
  "tokio",
