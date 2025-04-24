@@ -4,14 +4,17 @@ use {
     hyper::{server::conn::http1, service::service_fn},
     hyper_util::rt::TokioIo,
     log::warn,
+    regex::Regex,
     std::{
         collections::HashMap,
+        env,
         net::SocketAddr,
         path::{Path, PathBuf},
+        sync::Arc,
         time::{Duration, Instant},
     },
     tokio::{net::TcpListener, process::Command, sync::mpsc::channel},
-    ty::User,
+    ty::{Config, User},
 };
 
 pub mod fs;
@@ -52,7 +55,7 @@ pub async fn home_mgr() {
     }
 }
 
-pub async fn git_mgr() {
+pub async fn git_mgr(config: Arc<Config>) {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     let listener = TcpListener::bind(addr).await.unwrap();
 
@@ -73,27 +76,32 @@ pub async fn git_mgr() {
         }
     });
 
+    let urls = config.git.urls.clone();
     tokio::spawn(async move {
         let mut last_pull = Instant::now();
+        let re = Regex::new(r"([^/:]+?\/[^/:]+?)(\.git)?$").unwrap();
         while (rx.recv().await).is_some() {
             if Instant::now().duration_since(last_pull) < Duration::from_secs(100) {
                 last_pull = Instant::now();
-                let temp = Path::new("/tmp/rm-applications");
-                let hard = home().join("rm-applications");
+                for repo in urls.clone() {
+                    let id = re.find(&repo).unwrap().as_str();
+                    let temp = Path::new(&env::temp_dir()).join(id);
+                    let hard = home().join(id);
 
-                if temp.exists() {
-                    std::fs::remove_dir_all(temp).unwrap();
-                }
+                    if temp.exists() {
+                        std::fs::remove_dir_all(temp.clone()).unwrap();
+                    }
 
-                if Command::new("git")
-                    .args(["clone", "git@github.com:tascord/ptvrs.git", &temp.display().to_string()])
-                    .status()
-                    .await
-                    .unwrap()
-                    .success()
-                {
-                    std::fs::remove_dir_all(hard.clone()).unwrap();
-                    std::fs::copy(temp, hard).unwrap();
+                    if Command::new("git")
+                        .args(["clone", "git@github.com:tascord/ptvrs.git", &temp.display().to_string()])
+                        .status()
+                        .await
+                        .unwrap()
+                        .success()
+                    {
+                        std::fs::remove_dir_all(hard.clone()).unwrap();
+                        std::fs::copy(temp, hard).unwrap();
+                    }
                 }
             }
         }
@@ -102,8 +110,8 @@ pub async fn git_mgr() {
 
 pub async fn setup_user(user: User) -> anyhow::Result<()> {
     fs::create(user.clone()).await?;
-    Command::new("useradd")
-        .args([&Path::new("/home/").join(&user.name).display().to_string(), "-m", "-s", "fish", &user.name])
+    Command::new("sudo")
+        .args(["useradd", &Path::new("/home/").join(&user.name).display().to_string(), "-m", "-s", "fish", &user.name])
         .status()
         .await?;
     Ok(())

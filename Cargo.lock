@@ -948,10 +948,13 @@ dependencies = [
  "futures",
  "log",
  "mac_address",
+ "odde",
  "pretty_env_logger",
  "reqwest",
+ "serde",
  "tempdir",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -1204,6 +1207,7 @@ dependencies = [
  "ipsea",
  "log",
  "pretty_env_logger",
+ "regex",
  "serde",
  "serde_json",
  "tokio",

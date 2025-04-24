@@ -1,8 +1,10 @@
 use {
-    anyhow::{Result, anyhow, bail},
-    log::{LevelFilter, info, warn},
+    anyhow::{anyhow, bail, Result},
+    log::{info, warn, LevelFilter},
+    odde::ty::Config,
     std::{
         env,
+        env::args,
         io::{BufRead, BufReader},
         path::{Path, PathBuf},
         process::{self, Command, Stdio},
@@ -51,6 +53,10 @@ fn logger() {
 async fn main() -> Result<()> {
     logger();
 
+    let config_str =
+        fs::read_to_string("./config.toml").await.map_err(|e| anyhow!("Failed to read ./config.toml: {e:?}"))?;
+    let config = toml::from_str::<Config>(&config_str).map_err(|e| anyhow!("Invalid ./config.toml: {e:?}"))?;
+
     let work_dir = PathBuf::from("odde");
     fs::create_dir_all(&work_dir).await?;
 
@@ -66,7 +72,9 @@ async fn main() -> Result<()> {
         Ok(keys) => {
             fs::write(
                 user_data_path.clone(),
-                user_data.replace("#keys", &keys.iter().map(|k| format!("      - \"{k}\"")).collect::<Vec<_>>().join("\n")),
+                user_data
+                    .replace("#keys", &keys.iter().map(|k| format!("      - \"{k}\"")).collect::<Vec<_>>().join("\n"))
+                    .replace("#config", &config_str.lines().map(|k| format!("      {k}")).collect::<Vec<_>>().join("\n")),
             )
             .await
             .unwrap();
@@ -93,8 +101,16 @@ async fn main() -> Result<()> {
         process::exit(1);
     }
 
+    if args().any(|a| a.contains("--dry")) {
+        info!("--dry provided, cancelling early :)");
+        process::exit(0);
+    };
+
     // Resize image
-    if let Err(e) = Command::new("qemu-img").args(["resize", &img_path.display().to_string(), "30G"]).status() {
+    if let Err(e) = Command::new("qemu-img")
+        .args(["resize", &img_path.display().to_string(), &format!("{}G", config.vm.storage)])
+        .status()
+    {
         warn!("Failed to resize image: {e}");
         process::exit(1);
     }
@@ -106,7 +122,7 @@ async fn main() -> Result<()> {
             "accel=kvm:tcg",
             // "-cpu", "host",
             "-m",
-            "8G",
+            &format!("{}G", config.vm.memory),
             "-smp",
             "2",
             "-nographic",
@@ -131,7 +147,7 @@ async fn main() -> Result<()> {
 
     let mut line = String::new();
     let mut stdout = BufReader::new(qemu.unwrap().stdout.take().unwrap());
-    while let Ok(_) = stdout.read_line(&mut line) {
+    while stdout.read_line(&mut line).is_ok() {
         if line.contains("Permit User Sessions") && line.contains("OK") {
             let _ = Command::new("ssh-keygen")
                 .args(["-f", "~/.ssh/known_hosts", "-R", "[localhost]:2222"])
@@ -142,21 +158,23 @@ async fn main() -> Result<()> {
                 .map(|mut s| s.wait());
 
             info!("Building odde-service");
-            match Command::new("cargo").args(["build", "-p", "odde", "--release"]).status().map(|v| v.success()) {
+            match Command::new("cargo").args(["build", "--all", "--release"]).status().map(|v| v.success()) {
                 Ok(false) => warn!("Non-zero status code"),
                 Err(e) => warn!("Failed to run: {e:?}"),
                 _ => {}
             }
 
-            info!("Setting homdir permissions");
+            info!("Setting homedir permissions");
             match Command::new("ssh")
                 .args([
                     "odde@localhost",
                     "-p",
                     "2222",
-                    "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
-                    "-t",
-                    &format!("sudo chown -R odde:odde /home/odde/"),
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                    "-o",
+                    "UserKnownHostsFile=/dev/null",
+                    "sudo mkdir -p /home/odde && sudo chown -R odde:odde /home/odde && sudo chmod 755 /home/odde",
                 ])
                 .status()
                 .map(|v| v.success())
@@ -173,7 +191,44 @@ async fn main() -> Result<()> {
                     "-e",
                     "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
                     "./target/release/odde",
-                    "odde@localhost:/home/odde/",
+                    "odde@localhost:/home/odde/odde",
+                ])
+                .status()
+                .map(|v| v.success())
+            {
+                Ok(false) => warn!("Non-zero status code"),
+                Err(e) => warn!("Failed to run: {e:?}"),
+                _ => {}
+            }
+
+            info!("Copying odde-pam binary");
+            match Command::new("rsync")
+                .args([
+                    "-azhP",
+                    "-e",
+                    "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
+                    "./target/release/odde-pam",
+                    "odde@localhost:/home/odde/odde-pam",
+                ])
+                .status()
+                .map(|v| v.success())
+            {
+                Ok(false) => warn!("Non-zero status code"),
+                Err(e) => warn!("Failed to run: {e:?}"),
+                _ => {}
+            }
+
+            info!("Setting binary permissions");
+            match Command::new("ssh")
+                .args([
+                    "odde@localhost",
+                    "-p",
+                    "2222",
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                    "-o",
+                    "UserKnownHostsFile=/dev/null",
+                    "sudo chown odde:odde /home/odde/odde && sudo chmod 755 /home/odde/odde",
                 ])
                 .status()
                 .map(|v| v.success())
@@ -189,9 +244,11 @@ async fn main() -> Result<()> {
                     "odde@localhost",
                     "-p",
                     "2222",
-                    "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
-                    "-t",
-                    "\"sudo systemctl enable odde; sudo systemctl start odde\""
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                    "-o",
+                    "UserKnownHostsFile=/dev/null",
+                    "sudo systemctl enable odde && sudo systemctl start odde",
                 ])
                 .status()
                 .map(|v| v.success())

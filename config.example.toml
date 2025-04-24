@@ -1,0 +1,14 @@
+[vm]
+memory = 8.0
+storage = 90
+
+[git]
+key = "your git registered ssh key here"
+urls = [
+    "git@github.com:tascord/ptvrs.git"
+]
+
+[users]
+username = [
+    "ssh key for username@your_ip"
+]
