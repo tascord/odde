@@ -1,8 +1,0 @@
-[package]
-name = "odde-pam"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-ipsea = "0.1.0"
-odde = { path = "../odde-service" }

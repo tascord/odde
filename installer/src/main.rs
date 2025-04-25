@@ -201,22 +201,6 @@ async fn main() -> Result<()> {
                 _ => {}
             }
 
-            info!("Copying odde-pam binary");
-            match Command::new("rsync")
-                .args([
-                    "-azhP",
-                    "-e",
-                    "ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
-                    "./target/release/odde-pam",
-                    "odde@localhost:/home/odde/odde-pam",
-                ])
-                .status()
-                .map(|v| v.success())
-            {
-                Ok(false) => warn!("Non-zero status code"),
-                Err(e) => warn!("Failed to run: {e:?}"),
-                _ => {}
-            }
 
             info!("Setting binary permissions");
             match Command::new("ssh")

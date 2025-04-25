@@ -3,7 +3,7 @@ use {
     std::collections::HashMap,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct User {
     pub name: String,
     pub keys: Vec<String>,

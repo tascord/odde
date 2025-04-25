@@ -22,9 +22,9 @@ async fn main() {
         Arc::new(toml::from_str(&std::fs::read_to_string(home().join("config.toml")).unwrap()).unwrap());
 
     tokio::spawn(odde::git_mgr(config.clone())); // Keep an up-to-date git instance locally
-    tokio::spawn(odde::home_mgr()); // Nuke all accounts that havent been logged in for 90m
+    tokio::spawn(odde::home_mgr(config.clone())); // Nuke all accounts that havent been logged in for 90m
 
-    let proms = config.users.iter().map(|u| async { setup_user(u.clone()).await });
+    let proms = config.users.iter().map(|u| async { setup_user(u.clone(), config.clone()).await });
 
     let _ = try_join_all(proms).await;
 
@@ -34,7 +34,8 @@ async fn main() {
             let user = config.users.iter().find(|v| v.keys.iter().any(|k| a.key.contains(k)));
 
             if let Some(user) = user {
-                let _ = block_on(odde::fs::create(user.clone())).inspect_err(|e| warn!("Failed to create wd: {e:?}"));
+                let _ =
+                    block_on(odde::fs::create(user, config.clone())).inspect_err(|e| warn!("Failed to create wd: {e:?}"));
             } else {
                 warn!("User with no configured key logging in...");
             }

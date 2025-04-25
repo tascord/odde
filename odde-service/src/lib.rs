@@ -23,15 +23,17 @@ pub mod ty;
 
 pub fn home() -> PathBuf { Path::new("/home/odde").to_path_buf() }
 
-pub async fn home_mgr() {
-    let mut users = HashMap::<String, Instant>::new();
+pub async fn home_mgr(config: Arc<Config>) {
+    let mut users = HashMap::<User, Instant>::new();
     loop {
-        let currently_logged_in =
-            get_logged_in_users().await.inspect_err(|e| warn!("Failed to get logged in users: {}", e)).unwrap_or_default();
+        let currently_logged_in = get_logged_in_users(config.clone())
+            .await
+            .inspect_err(|e| warn!("Failed to get logged in users: {}", e))
+            .unwrap_or_default();
 
         let existing_users = users.clone();
         for u in currently_logged_in.iter().filter(|u| !existing_users.contains_key(*u)) {
-            users.insert(u.to_string(), Instant::now());
+            users.insert(u.clone(), Instant::now());
         }
 
         let now = Instant::now();
@@ -41,13 +43,21 @@ pub async fn home_mgr() {
             }
 
             if now.duration_since(*t) > TIMEOUT {
-                match block_on(destroy(u.to_string())) {
-                    Ok(_) => false,
+                match block_on(destroy(&u)) {
+                    Ok(_) => {}
                     Err(e) => {
-                        warn!("Failed to remove user {u}: {e:?}");
-                        true
+                        warn!("Failed to remove user {}: {e:?}", u.name);
                     }
                 }
+
+                match block_on(create(&u, config.clone())) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!("Failed to remove user {}: {e:?}", u.name);
+                    }
+                }
+
+                false
             } else {
                 true
             }
@@ -108,11 +118,8 @@ pub async fn git_mgr(config: Arc<Config>) {
     });
 }
 
-pub async fn setup_user(user: User) -> anyhow::Result<()> {
-    fs::create(user.clone()).await?;
-    Command::new("sudo")
-        .args(["useradd", &Path::new("/home/").join(&user.name).display().to_string(), "-m", "-s", "fish", &user.name])
-        .status()
-        .await?;
+pub async fn setup_user(user: User, config: Arc<Config>) -> anyhow::Result<()> {
+    Command::new("sudo").args(["useradd", "-s", "fish", &user.name]).status().await?;
+    fs::create(&user, config.clone()).await?;
     Ok(())
 }
