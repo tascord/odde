@@ -1,11 +1,10 @@
 use {
     crate::{
-        home,
+        git_id, home,
         ty::{Config, User},
     },
     anyhow::{anyhow, bail},
     log::{info, warn},
-    regex::Regex,
     std::{path::Path, sync::Arc, time::Duration},
     tokio::process::Command,
 };
@@ -25,12 +24,7 @@ pub async fn destroy(user: &User) -> anyhow::Result<()> {
     info!("Destroying user: {}", user.name);
     let path = Path::new("/home/").join(&user.name);
     info!("Removing directory: {}", path.display());
-    match Command::new("sudo")
-        .args(["rm", "-rf", &path.display().to_string()])
-        .status()
-        .await
-        .map(|r| r.success())
-    {
+    match Command::new("sudo").args(["rm", "-rf", &path.display().to_string()]).status().await.map(|r| r.success()) {
         Ok(true) => {
             info!("Successfully removed directory: {}", path.display());
             Ok(())
@@ -75,14 +69,13 @@ pub async fn create(user: &User, config: Arc<Config>) -> anyhow::Result<()> {
         .map_err(|_| anyhow!("Failed to make user dir"))?;
 
     // Copy repos
-    let re = Regex::new(r"([^/:]+?\/[^/:]+?)(\.git)?$").unwrap();
     for repo in config.git.urls.clone() {
-        let id = re.find(&repo).unwrap().as_str();
-        info!("Copying repo: {} to {}", home().join(id).display(), path.join(id).display());
+        let id = git_id(&repo);
+        info!("Copying repo: {} to {}", home().join(&id).display(), path.join(&id).display());
         command_is_okay(Command::new("sudo").args([
             "cp",
-            &home().join(id).display().to_string(),
-            &path.join(id).display().to_string(),
+            &home().join(&id).display().to_string(),
+            &path.join(&id).display().to_string(),
         ]))
         .await
         .map_err(|_| anyhow!("Failed to copy git repo {repo}"))?;

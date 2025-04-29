@@ -89,28 +89,29 @@ pub async fn git_mgr(config: Arc<Config>) {
     let urls = config.git.urls.clone();
     tokio::spawn(async move {
         let mut last_pull = Instant::now();
-        let re = Regex::new(r"([^/:]+?\/[^/:]+?)(\.git)?$").unwrap();
         while (rx.recv().await).is_some() {
             if Instant::now().duration_since(last_pull) < Duration::from_secs(100) {
                 last_pull = Instant::now();
                 for repo in urls.clone() {
-                    let id = re.find(&repo).unwrap().as_str();
-                    let temp = Path::new(&env::temp_dir()).join(id);
+                    let id = git_id(&repo);
+                    let temp = Path::new(&env::temp_dir()).join(&id);
                     let hard = home().join(id);
 
                     if temp.exists() {
                         std::fs::remove_dir_all(temp.clone()).unwrap();
                     }
 
-                    if Command::new("git")
-                        .args(["clone", "git@github.com:tascord/ptvrs.git", &temp.display().to_string()])
-                        .status()
-                        .await
-                        .unwrap()
-                        .success()
-                    {
-                        std::fs::remove_dir_all(hard.clone()).unwrap();
-                        std::fs::copy(temp, hard).unwrap();
+                    for repo in config.git.urls.clone() {
+                        if Command::new("git")
+                            .args(["clone", &repo, &temp.clone().display().to_string()])
+                            .status()
+                            .await
+                            .unwrap()
+                            .success()
+                        {
+                            std::fs::remove_dir_all(hard.clone().clone()).unwrap();
+                            std::fs::copy(temp.clone(), hard.clone()).unwrap();
+                        }
                     }
                 }
             }
@@ -122,4 +123,9 @@ pub async fn setup_user(user: User, config: Arc<Config>) -> anyhow::Result<()> {
     Command::new("sudo").args(["useradd", "-s", "fish", &user.name]).status().await?;
     fs::create(&user, config.clone()).await?;
     Ok(())
+}
+
+pub fn git_id(url: &str) -> String {
+    let re = Regex::new(r"(?:[^/:]+?\/([^/:]+?))(?:\.git|$)").unwrap();
+    re.captures(url).unwrap().get(1).unwrap().as_str().to_string()
 }
